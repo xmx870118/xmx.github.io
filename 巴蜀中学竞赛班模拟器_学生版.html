@@ -499,11 +499,11 @@ function deserializeState(d){
     });
     selectComp(d.selectedComp);
   }
-  // 恢复待处理事件
+  // 恢复待处理事件（事件回调无法序列化，仅显示提示）
   if(d.curEv && d.curEv.t){
     document.getElementById('ev-title').innerText='📢 日常事件';
-    document.getElementById('ev-desc').innerText=d.curEv.t;
-    document.getElementById('ev-btns').innerHTML=d.curEv.c.map((ch,i)=>`<button class="chbtn" onclick="G.handleEv(${i})">${ch.n}</button>`).join('');
+    document.getElementById('ev-desc').innerText=d.curEv.t + '\n\n（存档已读取，此事件已过期）';
+    document.getElementById('ev-btns').innerHTML='<button class="chbtn" onclick="closeModal(\'ev-modal\')">知道了</button>';
     document.getElementById('ev-modal').classList.remove('hidden');
   }
   // 隐藏开始界面，显示游戏
@@ -793,7 +793,12 @@ act(cat,sub){
   else if(cat==='mock'){nrgCost=25;apCost=2}
   else if(cat==='camp'){nrgCost=40;apCost=3}
   else if(cat==='rest'){apCost=1;if(sub==='study_cul')nrgCost=20}
-  
+  else if(cat==='buy'){apCost=1;nrgCost=5}
+  else if(cat==='tutor'){apCost=2;nrgCost=20}
+  else if(cat==='parttime'){apCost=1;nrgCost=25}
+  else if(cat==='bashu'){apCost=1;if(sub==='club')nrgCost=10;else if(sub==='volunteer')nrgCost=10;else if(sub==='lab')nrgCost=15}
+  else if(cat==='comp'&&sub==='seminar'){apCost=1;nrgCost=15}
+
   if(S.ap<apCost)return alert('行动力不足！');
   if(S.nrg<nrgCost)return alert('精力不足！需要先休息。');
   S.ap-=apCost;
@@ -863,18 +868,18 @@ act(cat,sub){
     if(S.money<400){this.log('💰 余额不足，请不起家教……','[资金]');return}S.money-=400;CUL_SUBJ.forEach(s=>{S.cul[s.id]+=3*intMod*diffMod*stressPen});S.stress+=8;S.achData.tutor++;this.log('家教老师一对一辅导，文化课突飞猛进！','[辅导]')
   }
   else if(cat==='parttime'){
-    let earn=rv(200,500);S.money+=earn;S.nrg-=25;S.mood-=5;S.achData.parttime++;this.log(`做家教兼职赚了 ${earn} 元，虽然累但值得。`,'[兼职]')
+    let earn=rv(200,500);S.money+=earn;S.mood-=5;S.achData.parttime++;this.log(`做家教兼职赚了 ${earn} 元，虽然累但值得。`,'[兼职]')
   }
   else if(cat==='bashu'){
     if(sub==='library'){CUL_SUBJ.forEach(s=>{S.cul[s.id]+=1.5*intMod*diffMod*stressPen});S.mood=clamp(S.mood+10,0,100);S.achData.library++;this.log('在巴蜀图书馆安静自习，效率很高。','[图书馆]')}
     else if(sub==='lab'){let keys=c.subs.map(s=>s.id);keys.forEach(k=>{S.comp[k]+=1.5*intMod*talentMod});S.stress+=5;S.achData.lab++;this.log('在巴蜀实验室做实验，收获颇丰。','[实验室]')}
     else if(sub==='run'){S.nrg=clamp(S.nrg+20,0,100);S.mood=clamp(S.mood+15,0,100);S.stress=clamp(S.stress-8,0,100);this.log('在巴蜀操场夜跑，出了一身汗，神清气爽。','[运动]')}
     else if(sub==='museum'){S.mood=clamp(S.mood+25,0,100);S.stress=clamp(S.stress-15,0,100);S.bashuEvents.push('校史馆');this.log(`参观了巴蜀校史馆，看到${BASHU.famousAlumni[Math.floor(Math.random()*BASHU.famousAlumni.length)]}校友的事迹，深受鼓舞！`,'[校史馆]')}
-    else if(sub==='club'){S.mood=clamp(S.mood+20,0,100);S.nrg-=10;S.bashuEvents.push('社团');this.log(`参加了${BASHU.clubs[Math.floor(Math.random()*BASHU.clubs.length)]}的活动，认识了很多新朋友！`,'[社团]')}
-    else if(sub==='volunteer'){let earn=rv(100,250);S.money+=earn;S.nrg-=10;S.mood=clamp(S.mood+10,0,100);this.log(`做竞赛志愿者赚了 ${earn} 元，还认识了很多大佬。`,'[志愿]')}
+    else if(sub==='club'){S.mood=clamp(S.mood+20,0,100);S.bashuEvents.push('社团');this.log(`参加了${BASHU.clubs[Math.floor(Math.random()*BASHU.clubs.length)]}的活动，认识了很多新朋友！`,'[社团]')}
+    else if(sub==='volunteer'){let earn=rv(100,250);S.money+=earn;S.mood=clamp(S.mood+10,0,100);this.log(`做竞赛志愿者赚了 ${earn} 元，还认识了很多大佬。`,'[志愿]')}
   }
   else if(cat==='comp'&&sub==='seminar'){
-    let keys=c.subs.map(s=>s.id);keys.forEach(k=>{S.comp[k]+=2.5*intMod*talentMod});S.nrg-=15;S.stress+=5;this.log('和竞赛班同学研讨难题，思路开阔了很多！','[研讨]');
+    let keys=c.subs.map(s=>s.id);keys.forEach(k=>{S.comp[k]+=2.5*intMod*talentMod});S.stress+=5;this.log('和竞赛班同学研讨难题，思路开阔了很多！','[研讨]');
     if(Math.random()<.3){let k=keys[Math.floor(Math.random()*keys.length)];S.comp[k]+=3;this.log('研讨中灵光一闪，想通了一个困扰已久的难题！','[顿悟]')}
   }
   
@@ -1249,7 +1254,7 @@ triggerEvent(){
       {n:'分给竞赛班同学',f:()=>{S.mood+=20;this.log('同学们都很开心，班级氛围更融洽了。','[分享]')}},
       {n:'自己留着',f:()=>{S.mood+=10;this.log('自己慢慢吃，想起了家的味道。','[想家]')}}
     ]},
-    {t:'学校邀请了一位${c.n}竞赛金牌得主回校分享经验。',c:[
+    {t:`学校邀请了一位${c.n}竞赛金牌得主回校分享经验。`,c:[
       {n:'认真听讲',f:()=>{let keys=c.subs.map(s=>s.id);keys.forEach(k=>S.comp[k]+=3);S.mood+=10;this.log('金牌学长的分享让你受益匪浅！','[分享会]')}},
       {n:'提问交流',f:()=>{let k=c.subs[Math.floor(Math.random()*c.subs.length)].id;S.comp[k]+=4;this.log('你提了一个问题，学长给了很详细的解答。','[交流]')}}
     ]},
